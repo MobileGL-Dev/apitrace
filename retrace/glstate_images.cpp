@@ -45,6 +45,8 @@
 #include <dlfcn.h>
 #endif
 
+extern "C" bool mobilegl_trace_get_drawable_bounds(int *width, int *height) __attribute__((weak));
+
 #ifdef __APPLE__
 
 #include <Carbon/Carbon.h>
@@ -994,6 +996,11 @@ dumpTextures(StateWriter &writer, Context &context)
 
 bool
 getDrawableBounds(GLint *width, GLint *height) {
+    if (mobilegl_trace_get_drawable_bounds &&
+        mobilegl_trace_get_drawable_bounds(width, height)) {
+        return true;
+    }
+
 #if defined(__linux__)
     if (_getPublicProcAddress("eglGetCurrentContext")) {
         EGLContext currentContext = eglGetCurrentContext();
@@ -1013,7 +1020,7 @@ getDrawableBounds(GLint *width, GLint *height) {
                 return false;
             }
 
-            return true;
+            return *width > 0 && *height > 0;
         }
     }
 #endif
@@ -1103,6 +1110,11 @@ getDrawableBounds(GLint *width, GLint *height) {
     return true;
 
 #else
+
+    if (mobilegl_trace_get_drawable_bounds &&
+        mobilegl_trace_get_drawable_bounds(width, height)) {
+        return true;
+    }
 
     return false;
 
