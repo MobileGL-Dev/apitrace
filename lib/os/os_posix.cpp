@@ -369,6 +369,14 @@ signalHandler(int sig, siginfo_t *info, void *context)
         if (old_action->sa_handler == SIG_DFL) {
             log("apitrace: info: taking default action for signal %i\n", sig);
 
+#ifdef __APPLE__
+            /*
+             * Re-raising fatal signals from a Cocoa/MoltenVK retrace can leave
+             * the native window process stuck in an unkillable exiting state.
+             * Preserve the diagnostic logging above, then terminate directly.
+             */
+            _Exit(128 + sig);
+#else
 #if 1
             struct sigaction dfl_action;
             dfl_action.sa_handler = SIG_DFL;
@@ -379,6 +387,7 @@ signalHandler(int sig, siginfo_t *info, void *context)
             raise(sig);
 #else
             raise(SIGKILL);
+#endif
 #endif
         } else if (old_action->sa_handler == SIG_IGN) {
             /* ignore */
