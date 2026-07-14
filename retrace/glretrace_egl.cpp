@@ -35,8 +35,6 @@
 #include "eglsize.hpp"
 
 #include <climits>
-#include <cstdio>
-#include <cstdlib>
 
 #ifndef EGL_OPENGL_ES_API
 #define EGL_OPENGL_ES_API		0x30A0
@@ -323,38 +321,13 @@ static void retrace_eglMakeCurrent(trace::Call &call) {
 }
 
 
-static bool mobilegl_trace_should_present_before_frame_complete(const trace::Call &call) {
-    const char *target = std::getenv("MOBILEGL_PRESENT_DUMP_CALL");
-    if (target == nullptr || target[0] == '\0') {
-        return false;
-    }
-    char *end = nullptr;
-    const unsigned long targetCall = std::strtoul(target, &end, 10);
-    return end != target && targetCall == call.no;
-}
-
-static void mobilegl_trace_set_current_call_override(const trace::Call &call) {
-    char callNo[32];
-    std::snprintf(callNo, sizeof(callNo), "%u", call.no);
-    setenv("MOBILEGL_TRACE_CURRENT_CALL_OVERRIDE", callNo, 1);
-}
-
 static void retrace_eglSwapBuffers(trace::Call &call) {
     glws::Drawable *drawable = getDrawable(call.arg(1).toUIntPtr());
-
-    bool didMobileGLTracePresent = false;
-    if (mobilegl_trace_should_present_before_frame_complete(call) &&
-        retrace::doubleBuffer && drawable) {
-        mobilegl_trace_set_current_call_override(call);
-        drawable->swapBuffers();
-        unsetenv("MOBILEGL_TRACE_CURRENT_CALL_OVERRIDE");
-        didMobileGLTracePresent = true;
-    }
 
     frame_complete(call);
 
     if (retrace::doubleBuffer) {
-        if (drawable && !didMobileGLTracePresent) {
+        if (drawable) {
             drawable->swapBuffers();
         }
     } else {
