@@ -45,7 +45,11 @@
 #include <dlfcn.h>
 #endif
 
+#if defined(_MSC_VER)
+extern "C" bool mobilegl_trace_get_drawable_bounds(int *, int *) { return false; }
+#else
 extern "C" bool mobilegl_trace_get_drawable_bounds(int *width, int *height) __attribute__((weak));
+#endif
 
 #ifdef __APPLE__
 

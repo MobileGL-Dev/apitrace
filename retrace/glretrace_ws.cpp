@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <map>
 
+#include "mobilegl_trace_dump.hpp"
 #include "os_thread.hpp"
 #include "retrace.hpp"
 #include "glproc.hpp"
@@ -208,6 +209,7 @@ makeCurrent(trace::Call &call, glws::Drawable *drawable,
             initContext();
             context->used = true;
         }
+        mobilegl_trace_dump::InstallIfRequested();
     }
 
     afterContextSwitch();
