@@ -207,7 +207,13 @@ class ValueDeserializer(stdapi.Visitor, stdapi.ExpanderMixin):
         new_lvalue = lookupHandle(handle, lvalue)
         shaderObject = new_lvalue.startswith('_program_map') or new_lvalue.startswith('_shader_map')
         if shaderObject:
-            print('if (glretrace::supportsARBShaderObjects) {')
+            # A typed (GLprogram / GLshader) argument resolves through its own map first: the
+            # parameter says which kind of object it names, so a capture whose implementation
+            # handed out the same number to a shader and a program (outside GL's shared name
+            # space) still replays. Only a name no typed creator recorded - one that came from
+            # glCreate*ObjectARB - falls back to the shared ARB handle map.
+            typedMap = new_lvalue.split('[', 1)[0]
+            print('if (glretrace::supportsARBShaderObjects && %s.find(%s) == %s.end()) {' % (typedMap, lvalue, typedMap))
             print('    if (retrace::verbosity >= 2) {')
             print('        std::cout << "%s " << size_t(%s) << " <- " << size_t(_handleARB_map[%s]) << "\\n";' % (handle.name, lvalue, lvalue))
             print('    }')
@@ -339,10 +345,11 @@ class SwizzledValueRegistrator(stdapi.Visitor, stdapi.ExpanderMixin):
             rvalue = "_origResult"
             entry = lookupHandle(handle, rvalue, True)
             if (entry.startswith('_program_map') or entry.startswith('_shader_map')):
+                # Record the typed name always (see visitHandle above) and mirror it into the ARB
+                # handle map, so ARB_shader_objects calls on a core-created object still resolve.
+                print('    %s = %s;' % (entry, lvalue))
                 print('if (glretrace::supportsARBShaderObjects) {')
                 print('    _handleARB_map[%s] = %s;' % (rvalue, lvalue))
-                print('} else {')
-                print('    %s = %s;' % (entry, lvalue))
                 print('}')
             else:
                 print("    %s = %s;" % (entry, lvalue))
