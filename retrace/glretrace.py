@@ -219,6 +219,18 @@ class GlRetracer(Retracer):
         if is_draw_arrays or is_draw_elements or is_misc_draw:
             print('    assert(call.flags & trace::CALL_FLAG_RENDER);')
 
+    def swizzleValues(self, function):
+        Retracer.swizzleValues(self, function)
+        # GL shares ONE name space between shaders and programs, whichever entry point created
+        # them, and a typed (GLshader / GLprogram) argument resolves through its typed map before
+        # the ARB handle map. So an ARB creator must refresh the typed map for its kind too:
+        # otherwise a name the capture recycled - glDeleteShader(N), then glCreateShaderObjectARB
+        # handing N out again - would resolve a later typed call on N to the OLD object.
+        if function.name == 'glCreateShaderObjectARB':
+            print('    _shader_map[static_cast<GLuint>((*call.ret).toUInt())] = static_cast<GLuint>(_result);')
+        elif function.name == 'glCreateProgramObjectARB':
+            print('    _program_map[static_cast<GLuint>((*call.ret).toUInt())] = static_cast<GLuint>(_result);')
+
     def overrideArgs(self, function):
         if not self.pack_function_regex.match(function.name):
             return
